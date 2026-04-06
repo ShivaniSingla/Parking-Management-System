@@ -1,0 +1,57 @@
+.receipt-card {
+  background-color: #fff;
+  border: 1px dashed var(--text-muted);
+  border-radius: 8px;
+  padding: 2rem;
+  max-width: 400px;
+  margin: 0 auto;
+  box-shadow: 0 4px 6px rgba(0,0,0,0.05);
+}
+
+.receipt-header {
+  text-align: center;
+  border-bottom: 2px dashed var(--border);
+  padding-bottom: 1rem;
+  margin-bottom: 1rem;
+}
+
+.receipt-header h2 {
+  color: var(--primary);
+  margin-bottom: 0.25rem;
+}
+
+.receipt-row {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 0.75rem;
+  font-size: 0.95rem;
+}
+
+.receipt-row .label {
+  color: var(--text-muted);
+}
+
+.receipt-row .value {
+  font-weight: 600;
+  color: var(--text);
+}
+
+.receipt-total {
+  margin-top: 1.5rem;
+  padding-top: 1rem;
+  border-top: 2px dashed var(--border);
+  font-size: 1.25rem;
+  font-weight: 700;
+}
+
+.receipt-footer {
+  margin-top: 2rem;
+  text-align: center;
+  font-size: 0.8rem;
+  color: var(--text-muted);
+}
+
+.print-btn {
+  width: 100%;
+  margin-top: 1.5rem;
+}

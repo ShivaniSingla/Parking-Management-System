@@ -1,0 +1,41 @@
+.entry-page-content {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 2rem;
+  align-items: start;
+}
+
+@media (max-width: 768px) {
+  .entry-page-content {
+    grid-template-columns: 1fr;
+  }
+}
+
+.entry-success-card {
+  background-color: var(--card-bg);
+  padding: 2rem;
+  border-radius: 8px;
+  text-align: center;
+  border: 2px solid var(--success);
+  box-shadow: 0 4px 12px rgba(22, 163, 74, 0.15);
+}
+
+.success-icon {
+  font-size: 3rem;
+  color: var(--success);
+  margin-bottom: 1rem;
+}
+
+.assigned-slot-display {
+  margin: 1.5rem 0;
+  padding: 1.5rem;
+  background-color: var(--bg);
+  border-radius: 8px;
+}
+
+.assigned-slot-number {
+  font-size: 3rem;
+  font-weight: 800;
+  color: var(--primary);
+  line-height: 1;
+}

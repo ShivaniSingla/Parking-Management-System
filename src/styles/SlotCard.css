@@ -1,0 +1,71 @@
+.slot-card {
+  border-radius: 8px;
+  padding: 1rem;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  min-height: 120px;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+  border: 1px solid var(--border);
+  transition: transform 0.2s;
+  background-color: var(--card-bg);
+}
+
+.slot-card:hover {
+  transform: translateY(-2px);
+}
+
+.slot-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 0.5rem;
+}
+
+.slot-number {
+  font-weight: 700;
+  font-size: 1.25rem;
+}
+
+.slot-icon {
+  font-size: 1.5rem;
+}
+
+.slot-type {
+  font-size: 0.8rem;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  font-weight: 600;
+  margin-bottom: 0.5rem;
+}
+
+.slot-status {
+  padding: 0.25rem 0.5rem;
+  border-radius: 4px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-align: center;
+  text-transform: capitalize;
+}
+
+/* Status variants */
+.status-available {
+  background-color: rgba(22, 163, 74, 0.1);
+  color: var(--success);
+}
+
+.status-occupied {
+  background-color: rgba(220, 38, 38, 0.1);
+  color: var(--danger);
+}
+
+.status-maintenance {
+  background-color: rgba(100, 116, 139, 0.1);
+  color: var(--text-muted);
+}
+
+/* Type variants for accent color */
+.slot-card.type-Car { border-top: 3px solid var(--primary); }
+.slot-card.type-Bike { border-top: 3px solid var(--success); }
+.slot-card.type-EV { border-top: 3px solid #0ea5e9; } /* Light blue */
+.slot-card.type-Handicap { border-top: 3px solid var(--warning); }
