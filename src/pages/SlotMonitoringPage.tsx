@@ -1,18 +1,11 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { useApp } from '../context/AppContext';
-import SlotCard from '../components/SlotCard';
 import '../styles/SlotMonitoringPage.css';
 
 const SlotMonitoringPage: React.FC = () => {
-  const { slots } = useApp();
-  const [filterType, setFilterType] = useState<string>('All');
-  const [filterStatus, setFilterStatus] = useState<string>('All');
+  const { parking, vehicles } = useApp();
 
-  const filteredSlots = slots.filter(slot => {
-    if (filterType !== 'All' && slot.slotType !== filterType) return false;
-    if (filterStatus !== 'All' && slot.status !== filterStatus) return false;
-    return true;
-  });
+  const activeVehicles = vehicles.filter(v => !v.exitTime);
 
   return (
     <div className="page-container">
@@ -20,52 +13,58 @@ const SlotMonitoringPage: React.FC = () => {
 
       <div className="slots-stats">
         <div className="stat-group">
+          <div className="stat-circle" style={{ backgroundColor: 'var(--primary)' }}></div>
+          <span>Total Slots: {parking.totalSlots}</span>
+        </div>
+        <div className="stat-group">
           <div className="stat-circle" style={{ backgroundColor: 'var(--success)' }}></div>
-          <span>Available ({slots.filter(s => s.status === 'available').length})</span>
+          <span>Available: {parking.avaSlots}</span>
         </div>
         <div className="stat-group">
           <div className="stat-circle" style={{ backgroundColor: 'var(--danger)' }}></div>
-          <span>Occupied ({slots.filter(s => s.status === 'occupied').length})</span>
-        </div>
-        <div className="stat-group">
-          <div className="stat-circle" style={{ backgroundColor: 'var(--text-muted)' }}></div>
-          <span>Maintenance ({slots.filter(s => s.status === 'maintenance').length})</span>
+          <span>Occupied: {parking.totalSlots - parking.avaSlots}</span>
         </div>
       </div>
 
-      <div className="filters-bar">
-        <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', marginRight: '2rem' }}>
-          <span style={{ fontWeight: 600 }}>Type:</span>
-          {['All', 'Car', 'Bike', 'EV', 'Handicap'].map(type => (
-            <button 
-              key={type} 
-              className={`filter-btn ${filterType === type ? 'active' : ''}`}
-              onClick={() => setFilterType(type)}
-            >
-              {type}
-            </button>
-          ))}
-        </div>
+      <div className="card" style={{ marginTop: '2rem' }}>
+        <h2 className="chart-title">Currently Parked Vehicles</h2>
+        <div className="table-container">
+          <table className="data-table">
+            <thead>
+              <tr>
+                <th>Vehicle No</th>
+                <th>Vehicle Type</th>
+                <th>Entry Time</th>
+                <th>Duration</th>
+              </tr>
+            </thead>
+            <tbody>
+              {activeVehicles.map(v => {
+                const durationMs = Date.now() - new Date(v.entryTime).getTime();
+                const durationMins = Math.floor(durationMs / 60000);
+                const hours = Math.floor(durationMins / 60);
+                const mins = durationMins % 60;
 
-        <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
-          <span style={{ fontWeight: 600 }}>Status:</span>
-          {['All', 'available', 'occupied', 'maintenance'].map(status => (
-            <button 
-              key={status} 
-              className={`filter-btn ${filterStatus === status ? 'active' : ''}`}
-              onClick={() => setFilterStatus(status)}
-            >
-              {status.charAt(0).toUpperCase() + status.slice(1)}
-            </button>
-          ))}
-        </div>
-      </div>
+                return (
+                  <tr key={v.vehicleNo}>
+                    <td style={{ fontWeight: 600 }}>{v.vehicleNo}</td>
+                    <td>{v.vehicleType}</td>
+                    <td>{new Date(v.entryTime).toLocaleString()}</td>
+                    <td>{hours > 0 ? `${hours}h ${mins}m` : `${mins}m`}</td>
+                  </tr>
+                );
+              })}
 
-      <div className="slots-grid">
-        {filteredSlots.map(slot => (
-          <SlotCard key={slot.slotId} slot={slot} />
-        ))}
-        {filteredSlots.length === 0 && <p>No slots found matching criteria.</p>}
+              {activeVehicles.length === 0 && (
+                <tr>
+                  <td colSpan={4} style={{ textAlign: 'center', color: 'var(--text-muted)', padding: '2rem' }}>
+                    No vehicles currently parked
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
       </div>
     </div>
   );

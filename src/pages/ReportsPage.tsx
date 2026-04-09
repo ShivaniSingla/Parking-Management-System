@@ -1,102 +1,94 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useApp } from '../context/AppContext';
-import { LineChart, Line, PieChart, Pie, Cell, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, Legend } from 'recharts';
+import Admin from '../models/Admin';
+import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from 'recharts';
 import { FaDownload } from 'react-icons/fa';
 import '../styles/ReportsPage.css';
 
-const COLORS = ['#2563eb', '#16a34a', '#0ea5e9', '#d97706'];
+
 
 const ReportsPage: React.FC = () => {
-  const { records } = useApp();
-  const [timeframe, setTimeframe] = useState<'Daily'|'Weekly'|'Monthly'>('Daily');
+  const { currentUser } = useApp();
+  const [tickets, setTickets] = useState<any[]>([]);
+  const [payments, setPayments] = useState<any[]>([]);
+  const [timeframe, setTimeframe] = useState<'Daily' | 'Weekly' | 'Monthly'>('Daily');
+
+  useEffect(() => {
+    const fetchReport = async () => {
+      const admin = new Admin(currentUser?.user_email_id || '');
+      const report = await admin.viewReport();
+      setTickets(report.tickets);
+      setPayments(report.payments);
+    };
+    fetchReport();
+  }, [currentUser]);
 
   const revenueData = React.useMemo(() => {
-    const completedRecords = records.filter(r => r.paymentStatus === 'completed' && r.exitTime);
+    const completedTickets = tickets.filter(t => t.exitTime && t.amount > 0);
     const data = [];
-    
+
     if (timeframe === 'Daily') {
-      // Past 7 Days
       for (let i = 6; i >= 0; i--) {
         const d = new Date();
         d.setDate(d.getDate() - i);
         const dayName = d.toLocaleDateString('en-US', { weekday: 'short' });
-        const revenue = completedRecords
-          .filter(r => new Date(r.exitTime!).toDateString() === d.toDateString())
-          .reduce((sum, r) => sum + (r.feeAmount || 0), 0);
+        const revenue = completedTickets
+          .filter(t => new Date(t.exitTime).toDateString() === d.toDateString())
+          .reduce((sum: number, t: any) => sum + (t.amount || 0), 0);
         data.push({ name: dayName, revenue });
       }
     } else if (timeframe === 'Weekly') {
-      // Past 4 Weeks
       for (let i = 3; i >= 0; i--) {
         const dEnd = new Date();
         dEnd.setDate(dEnd.getDate() - (i * 7));
         const dStart = new Date(dEnd);
         dStart.setDate(dStart.getDate() - 6);
-        
-        const startMillis = new Date(dStart).setHours(0,0,0,0);
-        const endMillis = new Date(dEnd).setHours(23,59,59,999);
-        
-        const revenue = completedRecords
-          .filter(r => {
-            const rt = new Date(r.exitTime!).getTime();
+        const startMillis = new Date(dStart).setHours(0, 0, 0, 0);
+        const endMillis = new Date(dEnd).setHours(23, 59, 59, 999);
+        const revenue = completedTickets
+          .filter(t => {
+            const rt = new Date(t.exitTime).getTime();
             return rt >= startMillis && rt <= endMillis;
           })
-          .reduce((sum, r) => sum + (r.feeAmount || 0), 0);
-          
-        const label = `Week ${4-i}`;
-        data.push({ name: label, revenue });
+          .reduce((sum: number, t: any) => sum + (t.amount || 0), 0);
+        data.push({ name: `Week ${4 - i}`, revenue });
       }
     } else if (timeframe === 'Monthly') {
-      // Past 6 Months
       for (let i = 5; i >= 0; i--) {
         const d = new Date();
-        d.setDate(1); // Fix: prevent date wrapping (e.g. Feb 31 -> Mar 3)
+        d.setDate(1);
         d.setMonth(d.getMonth() - i);
         const monthName = d.toLocaleDateString('en-US', { month: 'short' });
         const year = d.getFullYear();
         const month = d.getMonth();
-        
-        const revenue = completedRecords
-          .filter(r => {
-            const rd = new Date(r.exitTime!);
+        const revenue = completedTickets
+          .filter(t => {
+            const rd = new Date(t.exitTime);
             return rd.getFullYear() === year && rd.getMonth() === month;
           })
-          .reduce((sum, r) => sum + (r.feeAmount || 0), 0);
-          
+          .reduce((sum: number, t: any) => sum + (t.amount || 0), 0);
         data.push({ name: monthName, revenue });
       }
     }
     return data;
-  }, [records, timeframe]);
-
-  const vehicleTypeDistribution = [
-    { name: 'Car', value: records.filter(r => r.vehicleType === 'Car').length },
-    { name: 'Bike', value: records.filter(r => r.vehicleType === 'Bike').length },
-    { name: 'EV', value: records.filter(r => r.vehicleType === 'EV').length },
-    { name: 'Handicap', value: records.filter(r => r.vehicleType === 'Handicap').length },
-  ];
+  }, [tickets, timeframe]);
 
   const exportCSV = () => {
-    const headers = ['Record ID', 'Vehicle No', 'Type', 'Entry Time', 'Exit Time', 'Duration (mins)', 'Fee (INR)', 'Payment Method'];
-    const rows = records.map(r => [
-      r.recordId,
-      r.vehicleNumber,
-      r.vehicleType,
-      new Date(r.entryTime).toLocaleString(),
-      r.exitTime ? new Date(r.exitTime).toLocaleString() : 'N/A',
-      r.durationMinutes || '-',
-      r.feeAmount || '0',
-      r.paymentMethod || '-'
+    const headers = ['Ticket ID', 'Vehicle No', 'Entry Time', 'Exit Time', 'Amount'];
+    const rows = tickets.map(t => [
+      t.ticketID,
+      t.vehicleNo,
+      new Date(t.entryTime).toLocaleString(),
+      t.exitTime ? new Date(t.exitTime).toLocaleString() : 'N/A',
+      t.amount || '0',
     ]);
-
-    const csvContent = "data:text/csv;charset=utf-8," 
-      + headers.join(",") + "\\n" 
-      + rows.map(e => e.join(",")).join("\\n");
-      
+    const csvContent = "data:text/csv;charset=utf-8,"
+      + headers.join(",") + "\n"
+      + rows.map(e => e.join(",")).join("\n");
     const encodedUri = encodeURI(csvContent);
     const link = document.createElement("a");
     link.setAttribute("href", encodedUri);
-    link.setAttribute("download", "parking_records.csv");
+    link.setAttribute("download", "parking_report.csv");
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
@@ -108,7 +100,7 @@ const ReportsPage: React.FC = () => {
 
       <div style={{ marginBottom: '2rem' }}>
         {['Daily', 'Weekly', 'Monthly'].map(tf => (
-          <button 
+          <button
             key={tf}
             className={`btn ${timeframe === tf ? 'btn-primary' : ''}`}
             style={{ marginRight: '1rem', border: timeframe !== tf ? '1px solid var(--border)' : 'none' }}
@@ -134,66 +126,42 @@ const ReportsPage: React.FC = () => {
         </div>
 
         <div className="card">
-          <h2 className="chart-title">Vehicle Distribution</h2>
-          <ResponsiveContainer width="100%" height={300}>
-            {vehicleTypeDistribution.some(d => d.value > 0) ? (
-              <PieChart>
-                <Pie
-                  data={vehicleTypeDistribution}
-                  cx="50%"
-                  cy="50%"
-                  innerRadius={60}
-                  outerRadius={80}
-                  paddingAngle={5}
-                  dataKey="value"
-                >
-                  {vehicleTypeDistribution.map((_entry, index) => (
-                    <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                  ))}
-                </Pie>
-                <Tooltip />
-                <Legend verticalAlign="bottom" height={36}/>
-              </PieChart>
-            ) : (
-              <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100%', color: 'var(--text-muted)' }}>
-                No vehicle data available
-              </div>
-            )}
-          </ResponsiveContainer>
+          <h2 className="chart-title">Payment Summary</h2>
+          <div style={{ padding: '1rem' }}>
+            <p><strong>Total Tickets:</strong> {tickets.length}</p>
+            <p><strong>Total Payments:</strong> {payments.length}</p>
+            <p><strong>Total Revenue:</strong> ₹{payments.reduce((sum, p) => sum + (p.amount || 0), 0)}</p>
+          </div>
         </div>
       </div>
 
       <div className="card">
         <div className="table-header-controls">
-          <h2 className="chart-title" style={{ border: 'none', marginBottom: 0 }}>All Parking Records</h2>
+          <h2 className="chart-title" style={{ border: 'none', marginBottom: 0 }}>All Tickets</h2>
           <button className="btn btn-success" onClick={exportCSV}>
             <FaDownload style={{ marginRight: '0.5rem' }} /> Export CSV
           </button>
         </div>
-        
+
         <div className="table-container">
           <table className="data-table">
             <thead>
               <tr>
+                <th>Ticket ID</th>
                 <th>Vehicle No</th>
-                <th>Type</th>
                 <th>Entry Time</th>
                 <th>Exit Time</th>
-                <th>Duration</th>
-                <th>Fee</th>
-                <th>Method</th>
+                <th>Amount</th>
               </tr>
             </thead>
             <tbody>
-              {records.map(record => (
-                <tr key={record.recordId}>
-                  <td style={{ fontWeight: 600 }}>{record.vehicleNumber}</td>
-                  <td>{record.vehicleType}</td>
-                  <td>{new Date(record.entryTime).toLocaleString()}</td>
-                  <td>{record.exitTime ? new Date(record.exitTime).toLocaleString() : '-'}</td>
-                  <td>{record.durationMinutes ? `${record.durationMinutes}m` : '-'}</td>
-                  <td>₹{record.feeAmount || 0}</td>
-                  <td>{record.paymentMethod || '-'}</td>
+              {tickets.map(t => (
+                <tr key={t.ticketID}>
+                  <td style={{ fontWeight: 600 }}>{t.ticketID}</td>
+                  <td>{t.vehicleNo}</td>
+                  <td>{new Date(t.entryTime).toLocaleString()}</td>
+                  <td>{t.exitTime ? new Date(t.exitTime).toLocaleString() : '-'}</td>
+                  <td>₹{t.amount || 0}</td>
                 </tr>
               ))}
             </tbody>

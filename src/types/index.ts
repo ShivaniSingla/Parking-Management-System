@@ -1,5 +1,3 @@
-export * from './Vehicle';
-export * from './ParkingRecord';
-export * from './ParkingSlot';
-export * from './PricingPolicy';
-export * from './User';
+export { type UserType } from './User';
+export { type VehicleType } from './Vehicle';
+export { type TicketType, type ParkingType, type PaymentType, type PricingType } from './ParkingRecord';

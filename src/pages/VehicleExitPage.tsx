@@ -1,76 +1,73 @@
 import React, { useState } from 'react';
 import { useApp } from '../context/AppContext';
-import { ParkingRecord } from '../types';
-import ReceiptCard from '../components/ReceiptCard';
+import Staff from '../models/Staff';
+import Parking from '../models/Parking';
+import Vehicle from '../models/Vehicle';
 import '../styles/VehicleExitPage.css';
 
 const VehicleExitPage: React.FC = () => {
-  const { records, pricingPolicy, updateRecord, updateSlot } = useApp();
-  
-  const [vehicleNumber, setVehicleNumber] = useState('');
+  const { currentUser, parking, refreshData } = useApp();
+
+  const [vehicleNo, setVehicleNo] = useState('');
   const [error, setError] = useState('');
-  const [activeRecord, setActiveRecord] = useState<ParkingRecord | null>(null);
-  const [paymentMethod, setPaymentMethod] = useState<'Cash'|'Card'|'UPI'>('Cash');
+  const [activeVehicle, setActiveVehicle] = useState<Vehicle | null>(null);
+  const [paymentMethod, setPaymentMethod] = useState('Cash');
   const [showReceipt, setShowReceipt] = useState(false);
-  const [processedRecord, setProcessedRecord] = useState<ParkingRecord | null>(null);
+  const [receiptData, setReceiptData] = useState<{ vehicleNo: string; vehicleType: string; entryTime: string; exitTime: string; amount: number; ticketID: string; paymentMethod: string } | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
+  const [previewDuration, setPreviewDuration] = useState(0);
+  const [previewAmount, setPreviewAmount] = useState(0);
 
-  const calculateFee = (record: ParkingRecord) => {
-    const entryTime = new Date(record.entryTime);
-    const exitTime = new Date();
-    const durationMinutes = Math.ceil((exitTime.getTime() - entryTime.getTime()) / 60000);
-    
-    const policy = pricingPolicy.find(p => p.vehicleType === record.vehicleType);
-    if (!policy) return { durationMinutes, feeAmount: 0 };
-
-    if (durationMinutes <= policy.gracePeriodMinutes) {
-      return { durationMinutes, feeAmount: 0 };
-    }
-
-    const hours = Math.ceil(durationMinutes / 60);
-    const feeAmount = hours * policy.hourlyRate;
-    
-    return { durationMinutes, feeAmount };
-  };
-
-  const handleSearch = () => {
+  const handleSearch = async () => {
     setError('');
-    const vNum = vehicleNumber.trim().toUpperCase();
-    const record = records.find(r => r.vehicleNumber === vNum && r.paymentStatus === 'pending');
-    
-    if (!record) {
+    const vNum = vehicleNo.trim().toUpperCase();
+
+    const vehicle = await Vehicle.getActiveVehicle(vNum);
+    if (!vehicle) {
       setError(`No active parking found for vehicle ${vNum}`);
-      setActiveRecord(null);
+      setActiveVehicle(null);
       return;
     }
 
-    const { durationMinutes, feeAmount } = calculateFee(record);
-    setActiveRecord({ ...record, durationMinutes, feeAmount, exitTime: new Date().toISOString() });
+    // Preview: set temporary exit time to calculate duration/amount
+    vehicle.exitTime = new Date().toISOString();
+    const duration = vehicle.calculateTime();
+    setPreviewDuration(duration);
+
+    // Rough estimate for preview (will be accurate in processExit)
+    const hours = Math.ceil(duration / 60);
+    setPreviewAmount(hours * 20); // Rough estimate
+    setActiveVehicle(vehicle);
   };
 
   const handleConfirmExit = async () => {
-    if (!activeRecord) return;
+    if (!activeVehicle) return;
     setIsProcessing(true);
 
-    const completedRecord: ParkingRecord = {
-      ...activeRecord,
-      paymentMethod,
-      paymentStatus: 'completed'
-    };
-
     try {
-      await updateRecord(completedRecord.recordId, {
-        exitTime: completedRecord.exitTime,
-        durationMinutes: completedRecord.durationMinutes,
-        feeAmount: completedRecord.feeAmount,
-        paymentStatus: 'completed',
+      const staff = new Staff(currentUser?.user_email_id || '');
+      const parkingInstance = new Parking(parking.totalSlots, parking.avaSlots);
+
+      // Staff.processExit() calls Vehicle.calculateTime() → Ticket.generateBill() → Payment.processPay() → Parking.freeSlots()
+      const result = await staff.processExit(activeVehicle.vehicleNo, paymentMethod, parkingInstance);
+
+      if (!result.success) {
+        setError(result.error || 'Failed to process exit');
+        return;
+      }
+
+      setReceiptData({
+        vehicleNo: activeVehicle.vehicleNo,
+        vehicleType: activeVehicle.vehicleType,
+        entryTime: activeVehicle.entryTime,
+        exitTime: new Date().toISOString(),
+        amount: result.amount || 0,
+        ticketID: result.ticketID || '',
         paymentMethod,
       });
-
-      await updateSlot(activeRecord.slotId, { status: 'available' });
-      setProcessedRecord(completedRecord);
       setShowReceipt(true);
-      setActiveRecord(null);
+      setActiveVehicle(null);
+      await refreshData();
     } catch (err: any) {
       setError(err.message || 'Failed to process exit');
     } finally {
@@ -80,14 +77,14 @@ const VehicleExitPage: React.FC = () => {
 
   const closeReceipt = () => {
     setShowReceipt(false);
-    setProcessedRecord(null);
-    setVehicleNumber('');
+    setReceiptData(null);
+    setVehicleNo('');
   };
 
   return (
     <div className="page-container">
       <h1 style={{ marginBottom: '1.5rem' }}>Vehicle Exit</h1>
-      
+
       {!showReceipt ? (
         <div className="exit-page-content">
           <div>
@@ -95,12 +92,12 @@ const VehicleExitPage: React.FC = () => {
               <div className="search-section">
                 <div className="form-group">
                   <label>Vehicle Number</label>
-                  <input 
-                    type="text" 
-                    className="form-input" 
+                  <input
+                    type="text"
+                    className="form-input"
                     placeholder="Enter Vehicle No..."
-                    value={vehicleNumber}
-                    onChange={e => setVehicleNumber(e.target.value.toUpperCase())}
+                    value={vehicleNo}
+                    onChange={e => setVehicleNo(e.target.value.toUpperCase())}
                   />
                 </div>
                 <button className="btn btn-primary search-btn" onClick={handleSearch}>
@@ -112,42 +109,41 @@ const VehicleExitPage: React.FC = () => {
           </div>
 
           <div>
-            {activeRecord && (
+            {activeVehicle && (
               <div className="details-card">
                 <h2>Parking Details</h2>
                 <div style={{ marginTop: '1.5rem' }} className="details-grid">
                   <div className="detail-item">
                     <div className="label">Entry Time</div>
-                    <div className="value">{new Date(activeRecord.entryTime).toLocaleString()}</div>
+                    <div className="value">{new Date(activeVehicle.entryTime).toLocaleString()}</div>
                   </div>
                   <div className="detail-item">
                     <div className="label">Duration</div>
-                    <div className="value">{activeRecord.durationMinutes} mins</div>
+                    <div className="value">{previewDuration} mins</div>
                   </div>
                   <div className="detail-item">
                     <div className="label">Vehicle Type</div>
-                    <div className="value">{activeRecord.vehicleType}</div>
+                    <div className="value">{activeVehicle.vehicleType}</div>
                   </div>
                   <div className="detail-item">
-                    <div className="label">Slot Number</div>
-                    <div className="value">{activeRecord.slotId}</div>
+                    <div className="label">Vehicle No</div>
+                    <div className="value">{activeVehicle.vehicleNo}</div>
                   </div>
                 </div>
 
                 <div className="fee-calculation">
-                  <div style={{ color: 'var(--text-muted)' }}>Total Amount Due</div>
-                  <div className="fee-amount">₹{activeRecord.feeAmount}</div>
-                  {activeRecord.feeAmount === 0 && <div style={{ color: 'var(--success)' }}>(Within grace period)</div>}
+                  <div style={{ color: 'var(--text-muted)' }}>Estimated Amount</div>
+                  <div className="fee-amount">₹{previewAmount}</div>
                 </div>
 
                 <div style={{ marginBottom: '1.5rem' }}>
                   <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 500 }}>Payment Method</label>
                   <div className="payment-methods">
                     {['Cash', 'Card', 'UPI'].map(pm => (
-                      <button 
+                      <button
                         key={pm}
                         className={`pm-btn ${paymentMethod === pm ? 'active' : ''}`}
-                        onClick={() => setPaymentMethod(pm as any)}
+                        onClick={() => setPaymentMethod(pm)}
                       >
                         {pm}
                       </button>
@@ -163,7 +159,25 @@ const VehicleExitPage: React.FC = () => {
           </div>
         </div>
       ) : (
-        processedRecord && <ReceiptCard record={processedRecord} onClose={closeReceipt} />
+        receiptData && (
+          <div className="card" style={{ maxWidth: '500px', margin: '0 auto', padding: '2rem' }}>
+            <h2 style={{ textAlign: 'center', marginBottom: '1.5rem' }}>🧾 Receipt</h2>
+            <div style={{ display: 'grid', gap: '0.75rem' }}>
+              <div><strong>Ticket ID:</strong> {receiptData.ticketID}</div>
+              <div><strong>Vehicle No:</strong> {receiptData.vehicleNo}</div>
+              <div><strong>Vehicle Type:</strong> {receiptData.vehicleType}</div>
+              <div><strong>Entry Time:</strong> {new Date(receiptData.entryTime).toLocaleString()}</div>
+              <div><strong>Exit Time:</strong> {new Date(receiptData.exitTime).toLocaleString()}</div>
+              <div><strong>Payment Method:</strong> {receiptData.paymentMethod}</div>
+              <div style={{ fontSize: '1.5rem', fontWeight: 700, textAlign: 'center', marginTop: '1rem', color: 'var(--primary)' }}>
+                Amount Paid: ₹{receiptData.amount}
+              </div>
+            </div>
+            <button className="btn btn-primary" style={{ width: '100%', marginTop: '1.5rem' }} onClick={closeReceipt}>
+              Done
+            </button>
+          </div>
+        )
       )}
     </div>
   );

@@ -1,36 +1,36 @@
 import React from 'react';
-import { useNavigate } from 'react-router-dom';
-import { FaParking, FaSignOutAlt } from 'react-icons/fa';
 import { useApp } from '../context/AppContext';
+import { supabase } from '../lib/supabaseClient';
 import '../styles/Navbar.css';
 
 const Navbar: React.FC = () => {
-  const { currentUser, logout } = useApp();
-  const navigate = useNavigate();
+  const { currentUser } = useApp();
 
   const handleLogout = async () => {
-    await logout();
-    navigate('/');
+    await supabase.auth.signOut();
   };
 
   return (
     <nav className="navbar">
       <div className="navbar-brand">
-        <FaParking size={24} />
-        <span>ParkMaster PMS</span>
+        <span className="brand-icon">P</span>
+        ParkMaster PMS
       </div>
-      
-      {currentUser && (
-        <div className="navbar-user">
-          <div className="user-info">
-            <span className="username">{currentUser.username}</span>
-            <span className={`role-badge ${currentUser.role}`}>{currentUser.role}</span>
-          </div>
-          <button className="logout-btn" onClick={handleLogout}>
-            <FaSignOutAlt /> Logout
-          </button>
-        </div>
-      )}
+      <div className="navbar-right">
+        {currentUser && (
+          <>
+            <span className="user-info">
+              {currentUser.user_email_id}
+              <span className={`role-badge ${currentUser.role === 'admin' ? 'admin' : 'staff'}`}>
+                {currentUser.role === 'admin' ? 'Admin' : 'Staff'}
+              </span>
+            </span>
+            <button className="logout-btn" onClick={handleLogout}>
+              🚪 Logout
+            </button>
+          </>
+        )}
+      </div>
     </nav>
   );
 };

@@ -1,12 +1,24 @@
-export interface ParkingRecord {
-  recordId: string;
-  vehicleNumber: string;
-  vehicleType: 'Car' | 'Bike' | 'EV' | 'Handicap';
-  slotId: string;
-  entryTime: string; // ISO string
-  exitTime?: string; // ISO string
-  durationMinutes?: number;
-  feeAmount?: number;
-  paymentStatus: 'pending' | 'completed';
-  paymentMethod?: 'Cash' | 'Card' | 'UPI';
+export interface TicketType {
+  ticketID: string;
+  entryTime: string;
+  exitTime: string | null;
+  amount: number;
+  vehicleNo: string;
+}
+
+export interface ParkingType {
+  totalSlots: number;
+  avaSlots: number;
+}
+
+export interface PaymentType {
+  payID: string;
+  amount: number;
+  method: string;
+  ticketID: string;
+}
+
+export interface PricingType {
+  vehicleType: string;
+  hourlyRate: number;
 }

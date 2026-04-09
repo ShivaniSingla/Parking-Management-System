@@ -1,5 +1,6 @@
-export interface Vehicle {
-  vehicleNumber: string;
-  vehicleType: 'Car' | 'Bike' | 'EV' | 'Handicap';
-  ownerName?: string;
+export interface VehicleType {
+  vehicleNo: string;
+  vehicleType: string;
+  entryTime: string;
+  exitTime: string | null;
 }

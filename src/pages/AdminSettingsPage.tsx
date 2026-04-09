@@ -1,29 +1,41 @@
 import React, { useState } from 'react';
 import { useApp } from '../context/AppContext';
-import { PricingPolicy } from '../types';
-import { supabase } from '../lib/supabaseClient';
+import Admin from '../models/Admin';
 import '../styles/AdminSettingsPage.css';
 
 const AdminSettingsPage: React.FC = () => {
-  const { pricingPolicy, updatePricing } = useApp();
-  
-  const [localPricing, setLocalPricing] = useState<PricingPolicy[]>([...pricingPolicy]);
-  const [saveSuccess, setSaveSuccess] = useState(false);
+  const { currentUser, pricing, refreshData } = useApp();
 
-  const handlePricingChange = (index: number, field: keyof PricingPolicy, value: number) => {
+  // Pricing state
+  const [localPricing, setLocalPricing] = useState([...pricing]);
+  const [saveSuccess, setSaveSuccess] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
+
+  React.useEffect(() => {
+    setLocalPricing([...pricing]);
+  }, [pricing]);
+
+  const handlePricingChange = (index: number, newRate: number) => {
     const updated = [...localPricing];
-    updated[index] = { ...updated[index], [field]: value };
+    updated[index] = { ...updated[index], hourlyRate: newRate };
     setLocalPricing(updated);
     setSaveSuccess(false);
   };
 
-  const [isSaving, setIsSaving] = useState(false);
-
   const handleSavePricing = async () => {
     setIsSaving(true);
     try {
-      await updatePricing(localPricing);
+      const admin = new Admin(currentUser?.user_email_id || '');
+      // Call Admin.updatePrice() for each changed type
+      for (const p of localPricing) {
+        const result = await admin.updatePrice(p.vehicleType, p.hourlyRate);
+        if (!result.success) {
+          alert(`Failed to update ${p.vehicleType}: ${result.error}`);
+          return;
+        }
+      }
       setSaveSuccess(true);
+      await refreshData();
       setTimeout(() => setSaveSuccess(false), 3000);
     } catch (err) {
       console.error(err);
@@ -33,6 +45,7 @@ const AdminSettingsPage: React.FC = () => {
     }
   };
 
+  // Staff management state
   const [newStaffEmail, setNewStaffEmail] = useState('');
   const [newStaffPassword, setNewStaffPassword] = useState('');
   const [staffCreationStatus, setStaffCreationStatus] = useState('');
@@ -41,27 +54,20 @@ const AdminSettingsPage: React.FC = () => {
     e.preventDefault();
     setStaffCreationStatus('Creating...');
     try {
-      const { error } = await supabase.auth.signUp({
-        email: newStaffEmail.trim(),
-        password: newStaffPassword,
-      });
-      if (error) throw error;
-      setStaffCreationStatus('Staff created! Note: You have been signed out. Please log in again.');
+      const admin = new Admin(currentUser?.user_email_id || '');
+      // Call Admin.addStaff()
+      const result = await admin.addStaff(newStaffEmail.trim(), newStaffPassword);
+      if (!result.success) {
+        setStaffCreationStatus(`Error: ${result.error}`);
+        return;
+      }
+      setStaffCreationStatus('Staff created successfully! Note: You may be signed out. Please log in again.');
       setNewStaffEmail('');
       setNewStaffPassword('');
     } catch (err: any) {
       setStaffCreationStatus(`Error: ${err.message}`);
     }
   };
-
-  // Mock logs
-  const logs = [
-    { time: '10:45 AM', message: 'User admin logged in' },
-    { time: '10:50 AM', message: 'Vehicle entry MH04AB1234 recorded' },
-    { time: '11:15 AM', message: 'Slot S012 status changed to maintenance' },
-    { time: '11:30 AM', message: 'Pricing policy updated for EV' },
-    { time: '12:00 PM', message: 'Vehicle exit MH04AB1234 processed' },
-  ];
 
   return (
     <div className="page-container">
@@ -70,13 +76,15 @@ const AdminSettingsPage: React.FC = () => {
       <div className="settings-grid">
         <div className="card">
           <h2 className="chart-title">Pricing Policy</h2>
-          
+          <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', marginBottom: '1rem' }}>
+            Update hourly rates per vehicle type using <code>Admin.updatePrice()</code>
+          </p>
+
           <table className="data-table" style={{ marginBottom: '1.5rem' }}>
             <thead>
               <tr>
                 <th>Vehicle Type</th>
                 <th>Hourly Rate (₹)</th>
-                <th>Grace Period (mins)</th>
               </tr>
             </thead>
             <tbody>
@@ -84,19 +92,11 @@ const AdminSettingsPage: React.FC = () => {
                 <tr key={policy.vehicleType}>
                   <td style={{ fontWeight: 600 }}>{policy.vehicleType}</td>
                   <td>
-                    <input 
-                      type="number" 
+                    <input
+                      type="number"
                       className="table-input"
                       value={policy.hourlyRate}
-                      onChange={e => handlePricingChange(idx, 'hourlyRate', Number(e.target.value))}
-                    />
-                  </td>
-                  <td>
-                    <input 
-                      type="number" 
-                      className="table-input"
-                      value={policy.gracePeriodMinutes}
-                      onChange={e => handlePricingChange(idx, 'gracePeriodMinutes', Number(e.target.value))}
+                      onChange={e => handlePricingChange(idx, Number(e.target.value))}
                     />
                   </td>
                 </tr>
@@ -114,14 +114,14 @@ const AdminSettingsPage: React.FC = () => {
 
         <div className="card">
           <h2 className="chart-title">Staff Management</h2>
+          <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', marginBottom: '1rem' }}>
+            Add new staff via <code>Admin.addStaff()</code>
+          </p>
           <form onSubmit={handleCreateStaff} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-            <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>
-              Add a new staff member. <br/><strong>Note:</strong> Due to security defaults, creating a new user will temporarily sign you out.
-            </p>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
               <label style={{ fontWeight: 500, fontSize: '0.9rem' }}>Email</label>
-              <input 
-                type="email" 
+              <input
+                type="email"
                 className="table-input"
                 value={newStaffEmail}
                 onChange={e => setNewStaffEmail(e.target.value)}
@@ -130,8 +130,8 @@ const AdminSettingsPage: React.FC = () => {
             </div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
               <label style={{ fontWeight: 500, fontSize: '0.9rem' }}>Password (min 6 chars)</label>
-              <input 
-                type="password" 
+              <input
+                type="password"
                 className="table-input"
                 value={newStaffPassword}
                 onChange={e => setNewStaffPassword(e.target.value)}
@@ -148,18 +148,6 @@ const AdminSettingsPage: React.FC = () => {
               </div>
             )}
           </form>
-        </div>
-
-        <div className="card">
-          <h2 className="chart-title">System Logs</h2>
-          <div className="system-logs">
-            {logs.map((log, i) => (
-              <div key={i} className="log-item">
-                <span className="log-time">[{log.time}]</span>
-                <span className="log-message">{log.message}</span>
-              </div>
-            ))}
-          </div>
         </div>
       </div>
     </div>

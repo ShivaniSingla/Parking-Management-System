@@ -1,69 +1,36 @@
 import React from 'react';
-import { ParkingRecord } from '../types';
 import '../styles/ReceiptCard.css';
 
-interface ReceiptCardProps {
-  record: ParkingRecord;
+interface ReceiptProps {
+  record: {
+    vehicleNo: string;
+    vehicleType: string;
+    entryTime: string;
+    exitTime?: string;
+    amount?: number;
+    ticketID?: string;
+    paymentMethod?: string;
+  };
   onClose: () => void;
 }
 
-const ReceiptCard: React.FC<ReceiptCardProps> = ({ record, onClose }) => {
-  const formatDate = (isoString?: string) => {
-    if (!isoString) return 'N/A';
-    return new Date(isoString).toLocaleString();
-  };
-
+const ReceiptCard: React.FC<ReceiptProps> = ({ record, onClose }) => {
   return (
     <div className="receipt-card">
-      <div className="receipt-header">
-        <h2>ParkMaster</h2>
-        <p>Parking Receipt</p>
-      </div>
-
+      <h2 className="receipt-title">🧾 Parking Receipt</h2>
       <div className="receipt-details">
-        <div className="receipt-row">
-          <span className="label">Receipt No:</span>
-          <span className="value">{record.recordId}</span>
-        </div>
-        <div className="receipt-row">
-          <span className="label">Vehicle No:</span>
-          <span className="value">{record.vehicleNumber} ({record.vehicleType})</span>
-        </div>
-        <div className="receipt-row">
-          <span className="label">Slot No:</span>
-          <span className="value">{record.slotId}</span>
-        </div>
-        <div className="receipt-row">
-          <span className="label">Entry Time:</span>
-          <span className="value">{formatDate(record.entryTime)}</span>
-        </div>
-        <div className="receipt-row">
-          <span className="label">Exit Time:</span>
-          <span className="value">{formatDate(record.exitTime)}</span>
-        </div>
-        <div className="receipt-row">
-          <span className="label">Duration:</span>
-          <span className="value">{record.durationMinutes} mins</span>
-        </div>
-        <div className="receipt-row">
-          <span className="label">Payment Method:</span>
-          <span className="value">{record.paymentMethod}</span>
-        </div>
-
-        <div className="receipt-row receipt-total">
-          <span className="label">Amount Paid:</span>
-          <span className="value" style={{ color: 'var(--success)' }}>₹{record.feeAmount}</span>
+        {record.ticketID && <div className="receipt-row"><span>Ticket ID</span><span>{record.ticketID}</span></div>}
+        <div className="receipt-row"><span>Vehicle No</span><span>{record.vehicleNo}</span></div>
+        <div className="receipt-row"><span>Vehicle Type</span><span>{record.vehicleType}</span></div>
+        <div className="receipt-row"><span>Entry Time</span><span>{new Date(record.entryTime).toLocaleString()}</span></div>
+        {record.exitTime && <div className="receipt-row"><span>Exit Time</span><span>{new Date(record.exitTime).toLocaleString()}</span></div>}
+        {record.paymentMethod && <div className="receipt-row"><span>Payment</span><span>{record.paymentMethod}</span></div>}
+        <div className="receipt-total">
+          <span>Total Amount</span>
+          <span>₹{record.amount || 0}</span>
         </div>
       </div>
-
-      <div className="receipt-footer">
-        <p>Thank you for using ParkMaster!</p>
-        <p>Have a safe journey.</p>
-      </div>
-
-      <button className="btn btn-primary print-btn" onClick={onClose}>
-        Done
-      </button>
+      <button className="btn btn-primary" style={{ width: '100%' }} onClick={onClose}>Done</button>
     </div>
   );
 };

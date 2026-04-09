@@ -18,17 +18,8 @@ import SlotMonitoringPage from './pages/SlotMonitoringPage';
 import ReportsPage from './pages/ReportsPage';
 import AdminSettingsPage from './pages/AdminSettingsPage';
 
-// Layout Wrapper
-const AppLayout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const { currentUser, isAuthLoading } = useApp();
-
-  if (isAuthLoading) {
-    return <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh', fontWeight: 600, color: 'var(--text-secondary)' }}>Loading authentication...</div>;
-  }
-
-  // If not logged in, just render children (like LoginPage)
-  if (!currentUser) return <>{children}</>;
-
+// Layout Wrapper — ONLY wraps authenticated pages, NEVER blocks login pages
+const AuthenticatedLayout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   return (
     <div className="app-container">
       <Sidebar />
@@ -41,45 +32,61 @@ const AppLayout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
 };
 
 const AppRoutes: React.FC = () => {
+  const { currentUser, isAuthLoading } = useApp();
+
   return (
     <Routes>
+      {/* Public routes — always accessible, never blocked */}
       <Route path="/" element={<RoleSelectionPage />} />
       <Route path="/admin-login" element={<AdminLoginPage />} />
       <Route path="/staff-login" element={<StaffLoginPage />} />
-      
+
+      {/* Protected routes — check auth here, not in parent wrapper */}
       <Route path="/dashboard" element={
-        <ProtectedRoute>
-          <DashboardPage />
+        <ProtectedRoute isAuthLoading={isAuthLoading} currentUser={currentUser}>
+          <AuthenticatedLayout>
+            <DashboardPage />
+          </AuthenticatedLayout>
         </ProtectedRoute>
       } />
-      
+
       <Route path="/entry" element={
-        <ProtectedRoute>
-          <VehicleEntryPage />
+        <ProtectedRoute isAuthLoading={isAuthLoading} currentUser={currentUser}>
+          <AuthenticatedLayout>
+            <VehicleEntryPage />
+          </AuthenticatedLayout>
         </ProtectedRoute>
       } />
-      
+
       <Route path="/exit" element={
-        <ProtectedRoute>
-          <VehicleExitPage />
+        <ProtectedRoute isAuthLoading={isAuthLoading} currentUser={currentUser}>
+          <AuthenticatedLayout>
+            <VehicleExitPage />
+          </AuthenticatedLayout>
         </ProtectedRoute>
       } />
-      
+
       <Route path="/slots" element={
-        <ProtectedRoute>
-          <SlotMonitoringPage />
+        <ProtectedRoute isAuthLoading={isAuthLoading} currentUser={currentUser}>
+          <AuthenticatedLayout>
+            <SlotMonitoringPage />
+          </AuthenticatedLayout>
         </ProtectedRoute>
       } />
-      
+
       <Route path="/reports" element={
-        <ProtectedRoute adminOnly>
-          <ReportsPage />
+        <ProtectedRoute isAuthLoading={isAuthLoading} currentUser={currentUser} adminOnly>
+          <AuthenticatedLayout>
+            <ReportsPage />
+          </AuthenticatedLayout>
         </ProtectedRoute>
       } />
-      
+
       <Route path="/settings" element={
-        <ProtectedRoute adminOnly>
-          <AdminSettingsPage />
+        <ProtectedRoute isAuthLoading={isAuthLoading} currentUser={currentUser} adminOnly>
+          <AuthenticatedLayout>
+            <AdminSettingsPage />
+          </AuthenticatedLayout>
         </ProtectedRoute>
       } />
 
@@ -92,9 +99,7 @@ function App() {
   return (
     <AppProvider>
       <Router>
-        <AppLayout>
-          <AppRoutes />
-        </AppLayout>
+        <AppRoutes />
       </Router>
     </AppProvider>
   );
