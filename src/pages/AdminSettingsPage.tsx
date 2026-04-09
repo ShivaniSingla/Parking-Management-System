@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useApp } from '../context/AppContext';
 import { PricingPolicy } from '../types';
+import { supabase } from '../lib/supabaseClient';
 import '../styles/AdminSettingsPage.css';
 
 const AdminSettingsPage: React.FC = () => {
@@ -29,6 +30,27 @@ const AdminSettingsPage: React.FC = () => {
       alert("Failed to save pricing");
     } finally {
       setIsSaving(false);
+    }
+  };
+
+  const [newStaffEmail, setNewStaffEmail] = useState('');
+  const [newStaffPassword, setNewStaffPassword] = useState('');
+  const [staffCreationStatus, setStaffCreationStatus] = useState('');
+
+  const handleCreateStaff = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setStaffCreationStatus('Creating...');
+    try {
+      const { error } = await supabase.auth.signUp({
+        email: newStaffEmail.trim(),
+        password: newStaffPassword,
+      });
+      if (error) throw error;
+      setStaffCreationStatus('Staff created! Note: You have been signed out. Please log in again.');
+      setNewStaffEmail('');
+      setNewStaffPassword('');
+    } catch (err: any) {
+      setStaffCreationStatus(`Error: ${err.message}`);
     }
   };
 
@@ -88,6 +110,44 @@ const AdminSettingsPage: React.FC = () => {
             </button>
             {saveSuccess && <span style={{ color: 'var(--success)', fontWeight: 500 }}>Saved successfully!</span>}
           </div>
+        </div>
+
+        <div className="card">
+          <h2 className="chart-title">Staff Management</h2>
+          <form onSubmit={handleCreateStaff} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+            <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>
+              Add a new staff member. <br/><strong>Note:</strong> Due to security defaults, creating a new user will temporarily sign you out.
+            </p>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+              <label style={{ fontWeight: 500, fontSize: '0.9rem' }}>Email</label>
+              <input 
+                type="email" 
+                className="table-input"
+                value={newStaffEmail}
+                onChange={e => setNewStaffEmail(e.target.value)}
+                required
+              />
+            </div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+              <label style={{ fontWeight: 500, fontSize: '0.9rem' }}>Password (min 6 chars)</label>
+              <input 
+                type="password" 
+                className="table-input"
+                value={newStaffPassword}
+                onChange={e => setNewStaffPassword(e.target.value)}
+                required
+                minLength={6}
+              />
+            </div>
+            <button type="submit" className="btn btn-primary" style={{ width: 'fit-content' }}>
+              Create Staff Account
+            </button>
+            {staffCreationStatus && (
+              <div style={{ fontSize: '0.9rem', color: staffCreationStatus.includes('Error') ? 'var(--danger)' : 'var(--success)' }}>
+                {staffCreationStatus}
+              </div>
+            )}
+          </form>
         </div>
 
         <div className="card">

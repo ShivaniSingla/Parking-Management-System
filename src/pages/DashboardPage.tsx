@@ -7,7 +7,7 @@ import SummaryCard from '../components/SummaryCard';
 import '../styles/DashboardPage.css';
 
 const DashboardPage: React.FC = () => {
-  const { slots, records } = useApp();
+  const { slots, records, currentUser } = useApp();
   const navigate = useNavigate();
 
   const totalSlots = slots.length;
@@ -50,14 +50,16 @@ const DashboardPage: React.FC = () => {
         <SummaryCard title="Today's Revenue" value={`₹${todayRevenue}`} icon={<FaRupeeSign />} color="var(--warning)" />
       </div>
 
-      <div className="dashboard-actions">
-        <button className="btn btn-primary" onClick={() => navigate('/entry')}>
-          <FaSignInAlt style={{ marginRight: '0.5rem' }} /> New Entry
-        </button>
-        <button className="btn btn-danger" onClick={() => navigate('/exit')}>
-          <FaSignOutAlt style={{ marginRight: '0.5rem' }} /> Process Exit
-        </button>
-      </div>
+      {currentUser?.role !== 'admin' && (
+        <div className="dashboard-actions">
+          <button className="btn btn-primary" onClick={() => navigate('/entry')}>
+            <FaSignInAlt style={{ marginRight: '0.5rem' }} /> New Entry
+          </button>
+          <button className="btn btn-danger" onClick={() => navigate('/exit')}>
+            <FaSignOutAlt style={{ marginRight: '0.5rem' }} /> Process Exit
+          </button>
+        </div>
+      )}
 
       <div className="dashboard-content">
         <div className="chart-card">

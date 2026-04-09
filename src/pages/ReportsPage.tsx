@@ -50,6 +50,7 @@ const ReportsPage: React.FC = () => {
       // Past 6 Months
       for (let i = 5; i >= 0; i--) {
         const d = new Date();
+        d.setDate(1); // Fix: prevent date wrapping (e.g. Feb 31 -> Mar 3)
         d.setMonth(d.getMonth() - i);
         const monthName = d.toLocaleDateString('en-US', { month: 'short' });
         const year = d.getFullYear();
@@ -69,10 +70,10 @@ const ReportsPage: React.FC = () => {
   }, [records, timeframe]);
 
   const vehicleTypeDistribution = [
-    { name: 'Car', value: records.filter(r => r.vehicleType === 'Car').length || 40 },
-    { name: 'Bike', value: records.filter(r => r.vehicleType === 'Bike').length || 25 },
-    { name: 'EV', value: records.filter(r => r.vehicleType === 'EV').length || 15 },
-    { name: 'Handicap', value: records.filter(r => r.vehicleType === 'Handicap').length || 5 },
+    { name: 'Car', value: records.filter(r => r.vehicleType === 'Car').length },
+    { name: 'Bike', value: records.filter(r => r.vehicleType === 'Bike').length },
+    { name: 'EV', value: records.filter(r => r.vehicleType === 'EV').length },
+    { name: 'Handicap', value: records.filter(r => r.vehicleType === 'Handicap').length },
   ];
 
   const exportCSV = () => {
@@ -135,23 +136,29 @@ const ReportsPage: React.FC = () => {
         <div className="card">
           <h2 className="chart-title">Vehicle Distribution</h2>
           <ResponsiveContainer width="100%" height={300}>
-            <PieChart>
-              <Pie
-                data={vehicleTypeDistribution}
-                cx="50%"
-                cy="50%"
-                innerRadius={60}
-                outerRadius={80}
-                paddingAngle={5}
-                dataKey="value"
-              >
-                {vehicleTypeDistribution.map((_entry, index) => (
-                  <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                ))}
-              </Pie>
-              <Tooltip />
-              <Legend verticalAlign="bottom" height={36}/>
-            </PieChart>
+            {vehicleTypeDistribution.some(d => d.value > 0) ? (
+              <PieChart>
+                <Pie
+                  data={vehicleTypeDistribution}
+                  cx="50%"
+                  cy="50%"
+                  innerRadius={60}
+                  outerRadius={80}
+                  paddingAngle={5}
+                  dataKey="value"
+                >
+                  {vehicleTypeDistribution.map((_entry, index) => (
+                    <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                  ))}
+                </Pie>
+                <Tooltip />
+                <Legend verticalAlign="bottom" height={36}/>
+              </PieChart>
+            ) : (
+              <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100%', color: 'var(--text-muted)' }}>
+                No vehicle data available
+              </div>
+            )}
           </ResponsiveContainer>
         </div>
       </div>

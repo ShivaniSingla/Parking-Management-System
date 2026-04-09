@@ -8,7 +8,9 @@ import Sidebar from './components/Sidebar';
 import ProtectedRoute from './components/ProtectedRoute';
 
 // Pages
-import LoginPage from './pages/LoginPage';
+import RoleSelectionPage from './pages/RoleSelectionPage';
+import AdminLoginPage from './pages/AdminLoginPage';
+import StaffLoginPage from './pages/StaffLoginPage';
 import DashboardPage from './pages/DashboardPage';
 import VehicleEntryPage from './pages/VehicleEntryPage';
 import VehicleExitPage from './pages/VehicleExitPage';
@@ -18,7 +20,11 @@ import AdminSettingsPage from './pages/AdminSettingsPage';
 
 // Layout Wrapper
 const AppLayout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const { currentUser } = useApp();
+  const { currentUser, isAuthLoading } = useApp();
+
+  if (isAuthLoading) {
+    return <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh', fontWeight: 600, color: 'var(--text-secondary)' }}>Loading authentication...</div>;
+  }
 
   // If not logged in, just render children (like LoginPage)
   if (!currentUser) return <>{children}</>;
@@ -37,7 +43,9 @@ const AppLayout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
 const AppRoutes: React.FC = () => {
   return (
     <Routes>
-      <Route path="/" element={<LoginPage />} />
+      <Route path="/" element={<RoleSelectionPage />} />
+      <Route path="/admin-login" element={<AdminLoginPage />} />
+      <Route path="/staff-login" element={<StaffLoginPage />} />
       
       <Route path="/dashboard" element={
         <ProtectedRoute>

@@ -8,6 +8,7 @@ interface AppContextType {
   records: ParkingRecord[];
   pricingPolicy: PricingPolicy[];
   loading: boolean;
+  isAuthLoading: boolean;
   error: string | null;
   login: (user: User) => void;
   logout: () => Promise<void>;
@@ -16,6 +17,7 @@ interface AppContextType {
   updateRecord: (recordId: string, updates: Partial<ParkingRecord>) => Promise<void>;
   updatePricing: (updates: PricingPolicy[]) => Promise<void>;
   refreshData: () => Promise<void>;
+  refreshUserRole: (user: any) => Promise<void>;
 }
 
 const AppContext = createContext<AppContextType | undefined>(undefined);
@@ -26,6 +28,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const [records, setRecords] = useState<ParkingRecord[]>([]);
   const [pricingPolicy, setPricingPolicy] = useState<PricingPolicy[]>([]);
   const [loading, setLoading] = useState(true);
+  const [isAuthLoading, setIsAuthLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   const fetchInitialData = async () => {
@@ -54,26 +57,86 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }
   };
 
-  useEffect(() => {
-    // Check active session
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      if (session?.user) {
-        // Assume admin. In a real app we'd fetch from a users table.
-        setCurrentUser({ username: session.user.email || 'user', role: 'admin' });
-      }
-    });
+  const fetchUserRole = async (user: any) => {
+    console.log("Fetching role for user:", user.email);
+    try {
+      const timeoutPromise = new Promise((_, reject) => 
+        setTimeout(() => reject(new Error("Role fetch timeout")), 3000)
+      );
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      const result = await Promise.race([
+        supabase.from('profiles').select('*').eq('id', user.id).single(),
+        timeoutPromise
+      ]) as any;
+
+      if (!result.error && result.data) {
+        console.log("Role found:", result.data.role);
+        setCurrentUser({ username: user.email || 'user', role: result.data.role });
+      } else {
+        console.warn("Profile fetch issue, defaulting to staff:", result.error);
+        setCurrentUser({ username: user.email || 'user', role: 'staff' });
+      }
+    } catch (err) {
+      console.error("fetchUserRole exception or timeout:", err);
+      // On timeout or exception, immediately set a fallback role and move on
+      setCurrentUser({ username: user.email || 'user', role: 'staff' });
+    }
+  };
+
+  useEffect(() => {
+    let authSubscription: any = null;
+
+    const initAuth = async () => {
+      console.log("Initializing Auth...");
+      const authTimeout = setTimeout(() => {
+        console.warn("Auth initialization timed out (30s)");
+        setIsAuthLoading(false);
+      }, 30000);
+
+      try {
+        // 1. Check current session
+        const { data: { session }, error } = await supabase.auth.getSession();
+        if (error) throw error;
+
+        if (session?.user) {
+          await fetchUserRole(session.user);
+        } else {
+          console.log("No active session found during initAuth");
+          setCurrentUser(null);
+        }
+      } catch (err) {
+        console.error("initAuth error:", err);
+      } finally {
+        clearTimeout(authTimeout);
+        setIsAuthLoading(false);
+        console.log("Auth init finished");
+      }
+    };
+
+    // Initialize Auth
+    initAuth();
+
+    // Listen for changes
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+      console.log("Auth State Changed:", event, session?.user?.email);
+      
       if (session?.user) {
-        setCurrentUser({ username: session.user.email || 'user', role: 'admin' });
+        // If we already have the user and it's the same, skip re-fetch unless it's a SIGN_IN event
+        await fetchUserRole(session.user);
       } else {
         setCurrentUser(null);
       }
+      
+      // Also clear loading if it's still stuck
+      setIsAuthLoading(false);
     });
 
+    authSubscription = subscription;
     fetchInitialData();
 
-    return () => subscription.unsubscribe();
+    return () => {
+      if (authSubscription) authSubscription.unsubscribe();
+    };
   }, []);
 
   const login = (user: User) => {
@@ -132,9 +195,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   return (
     <AppContext.Provider value={{
-      currentUser, slots, records, pricingPolicy, loading, error,
+      currentUser, slots, records, pricingPolicy, loading, isAuthLoading, error,
       login, logout, updateSlot, addRecord, updateRecord, updatePricing,
-      refreshData: fetchInitialData
+      refreshData: fetchInitialData,
+      refreshUserRole: fetchUserRole
     }}>
       {children}
     </AppContext.Provider>
