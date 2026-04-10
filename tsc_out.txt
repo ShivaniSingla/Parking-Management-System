@@ -1,9 +1,0 @@
-﻿src/components/ReceiptCard.tsx(2,10): error TS2305: Module '"../types"' has no exported member 'ParkingRecord'.
-src/components/SlotCard.tsx(2,10): error TS2305: Module '"../types"' has no exported member 'ParkingSlot'.
-src/pages/ReportsPage.tsx(4,27): error TS6133: 'PieChart' is declared but its value is never read.
-src/pages/ReportsPage.tsx(4,37): error TS6133: 'Pie' is declared but its value is never read.
-src/pages/ReportsPage.tsx(4,42): error TS6133: 'Cell' is declared but its value is never read.
-src/pages/ReportsPage.tsx(4,107): error TS6133: 'Legend' is declared but its value is never read.
-src/pages/ReportsPage.tsx(8,7): error TS6133: 'COLORS' is declared but its value is never read.
-src/pages/ReportsPage.tsx(76,9): error TS6133: 'vehicleTypeDist' is declared but its value is never read.
-src/pages/VehicleExitPage.tsx(6,1): error TS6133: 'ReceiptCard' is declared but its value is never read.

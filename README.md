@@ -82,7 +82,7 @@ parking-management-system/
 
 ---
 
-## 🌐 Deployment
+## Deployment
 
 The project is configured for deployment on **Vercel** and **GitHub Pages**.
 
